@@ -1,0 +1,21 @@
+# ═══════════════════════════════════════════════════════════════
+# Containerized Playwright test runner for CI / one-command mode.
+# Used by docker-compose.test.yml --profile e2e
+#
+# Build:  docker build -f Dockerfile.e2e -t mediconyx-e2e .
+# Run:    docker run --rm mediconyx-e2e
+# ═══════════════════════════════════════════════════════════════
+
+FROM mcr.microsoft.com/playwright:v1.52.0-noble
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+# Copy test project
+COPY . .
+
+# Default: run all tests
+CMD ["npx", "playwright", "test"]
