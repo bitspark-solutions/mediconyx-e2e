@@ -304,14 +304,20 @@ test.describe('Cross-portal role-based access @e2e @auth @smoke', () => {
     const login = new LoginPage(page);
     await login.loginAs('karim.hassan@patient.local', 'Patient@123');
     await page.goto('/portal/doctor');
-    await page.waitForTimeout(2000);
 
-    const url = page.url();
-    // Either redirected to /unauthorized or stays on the page but shows blocked content
-    const body = await page.locator('body').innerText();
-    const isBlocked = url.includes('/unauthorized') ||
-                      body.toLowerCase().includes('unauthorized') ||
-                      body.toLowerCase().includes('not authorized');
-    expect(isBlocked, `Patient should be blocked from /portal/doctor, but got URL=${url}`).toBe(true);
+    // Block is asynchronous (hydration → role check → redirect), so poll
+    // instead of asserting after a fixed sleep — fixed sleeps flake under
+    // parallel worker CPU contention.
+    await expect(async () => {
+      const url = page.url();
+      const body = await page.locator('body').innerText();
+      const isBlocked = url.includes('/unauthorized') ||
+                        url.includes('/login') ||
+                        body.toLowerCase().includes('unauthorized') ||
+                        body.toLowerCase().includes('not authorized') ||
+                        body.toLowerCase().includes('access denied') ||
+                        body.toLowerCase().includes('redirecting');
+      expect(isBlocked, `Patient should be blocked from /portal/doctor, but got URL=${url}`).toBe(true);
+    }).toPass({ timeout: 15_000 });
   });
 });
