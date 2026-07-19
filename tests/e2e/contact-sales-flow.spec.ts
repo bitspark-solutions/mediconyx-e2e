@@ -104,12 +104,16 @@ test.describe('Contact Sales Full E2E Flow @e2e @smoke', () => {
   test('submit another allows second submission', async ({ page, request }) => {
     const contactSales = new ContactSalesPage(page);
     const api = new ApiClient(request);
+
+    // Strip chars the API HTML-encodes (matches data-factory behavior)
+    const sanitize = (v: string) => v.replace(/['"&<>]/g, '');
+
     await contactSales.goto();
 
     // First submission
-    const hospital1 = `${faker.company.name()} First-E2E`;
+    const hospital1 = sanitize(`${faker.company.name()} First-E2E`);
     await contactSales.hospitalNameInput.fill(hospital1);
-    await contactSales.contactPersonInput.fill(faker.person.fullName());
+    await contactSales.contactPersonInput.fill(sanitize(faker.person.fullName()));
     await contactSales.emailInput.fill(faker.internet.email().toLowerCase());
     await contactSales.phoneInput.fill(faker.phone.number({ style: 'international' }));
     await contactSales.submit();
@@ -121,10 +125,10 @@ test.describe('Contact Sales Full E2E Flow @e2e @smoke', () => {
     await expect(contactSales.hospitalNameInput).toHaveValue('');
 
     // Second submission
-    const hospital2 = `${faker.company.name()} Second-E2E`;
+    const hospital2 = sanitize(`${faker.company.name()} Second-E2E`);
     const email2 = faker.internet.email().toLowerCase();
     await contactSales.hospitalNameInput.fill(hospital2);
-    await contactSales.contactPersonInput.fill(faker.person.fullName());
+    await contactSales.contactPersonInput.fill(sanitize(faker.person.fullName()));
     await contactSales.emailInput.fill(email2);
     await contactSales.phoneInput.fill(faker.phone.number({ style: 'international' }));
     await contactSales.submit();
