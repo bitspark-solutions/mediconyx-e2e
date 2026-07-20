@@ -6,3 +6,4 @@ blob-report/
 .playwright/
 .env
 .env.test
+.kimi-code/
