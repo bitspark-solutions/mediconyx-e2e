@@ -187,6 +187,129 @@ export class PortalApiClient {
     return this.authedFetch(role, 'GET', '/api/sales/requests?pageSize=100');
   }
 
+  // ── Tier 2: IPD (wards / beds / admissions / bed board) ──────
+  listWards(role: Role): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', '/api/ipd/wards');
+  }
+  createWard(role: Role, data: { name: string; code: string; wardType: string; floor?: number; capacity?: number; defaultDailyRate?: number; location?: string; }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/ipd/wards', data, 'application/json');
+  }
+  updateWard(role: Role, id: number, data: any): Promise<ApiResponse> {
+    return this.authedFetch(role, 'PATCH', `/api/ipd/wards/${id}`, data, 'application/json');
+  }
+  deleteWard(role: Role, id: number): Promise<ApiResponse> {
+    return this.authedFetch(role, 'DELETE', `/api/ipd/wards/${id}`);
+  }
+  listBeds(role: Role, params?: { wardId?: number; status?: string }): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (params?.wardId) query.set('wardId', String(params.wardId));
+    if (params?.status) query.set('status', params.status);
+    const q = query.toString();
+    return this.authedFetch(role, 'GET', `/api/ipd/beds${q ? '?' + q : ''}`);
+  }
+  createBed(role: Role, data: { wardId: number; number: string; status?: string; dailyRate?: number; }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/ipd/beds', data, 'application/json');
+  }
+  updateBedStatus(role: Role, id: number, data: { status: string; dailyRate?: number; }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'PATCH', `/api/ipd/beds/${id}/status`, data, 'application/json');
+  }
+  getBedBoard(role: Role): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', '/api/ipd/bed-board');
+  }
+  listAdmissions(role: Role, params?: { activeOnly?: boolean; status?: string }): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (params?.activeOnly) query.set('activeOnly', 'true');
+    if (params?.status) query.set('status', params.status);
+    const q = query.toString();
+    return this.authedFetch(role, 'GET', `/api/ipd/admissions${q ? '?' + q : ''}`);
+  }
+  createAdmission(role: Role, data: { patientId: number; bedId: number; attendingDoctorId: number; admissionType: string; reason?: string; diagnosisOnAdmission?: string; }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/ipd/admissions', data, 'application/json');
+  }
+  transferAdmission(role: Role, id: number, data: { toBedId: number; reason?: string; }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', `/api/ipd/admissions/${id}/transfer`, data, 'application/json');
+  }
+  dischargeAdmission(role: Role, id: number, data: { dischargingDoctorId: number; conditionAtDischarge: string; dischargeInstructions?: string; followUpDate?: string; }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', `/api/ipd/admissions/${id}/discharge`, data, 'application/json');
+  }
+
+  // ── Tier 3.1: Per-bed-day billing ──────────────────────────────
+  generateBill(role: Role, admissionId: number): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', `/api/ipd/admissions/${admissionId}/generate-bill`, {}, 'application/json');
+  }
+  getBill(role: Role, admissionId: number): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', `/api/ipd/admissions/${admissionId}/bill`);
+  }
+  getChargesByDate(role: Role, date: string): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', `/api/ipd/billing/charges?date=${date}`);
+  }
+
+  // ── Tier 3.3: Telemedicine ─────────────────────────────────────
+  listTelehealthSessions(role: Role): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', '/api/telemedicine/sessions');
+  }
+  createTelehealthSession(role: Role, data: { patientId: number; doctorId: number; scheduledAt: string; notes?: string; }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/telemedicine/sessions', data, 'application/json');
+  }
+  startTelehealthSession(role: Role, id: number): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', `/api/telemedicine/sessions/${id}/start`, {}, 'application/json');
+  }
+  endTelehealthSession(role: Role, id: number, notes?: string): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', `/api/telemedicine/sessions/${id}/end`, JSON.stringify(notes ?? ''), 'application/json');
+  }
+  cancelTelehealthSession(role: Role, id: number, reason?: string): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', `/api/telemedicine/sessions/${id}/cancel`, JSON.stringify(reason ?? ''), 'application/json');
+  }
+
+  // ── Tier 3.4: Public doctor directory (NO auth) ───────────────
+  async listPublicDoctors(params?: { q?: string; specialization?: string; tenantSubdomain?: string; accepting?: boolean }): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (params?.q) query.set('q', params.q);
+    if (params?.specialization) query.set('specialization', params.specialization);
+    if (params?.tenantSubdomain) query.set('tenantSubdomain', params.tenantSubdomain);
+    if (params?.accepting !== undefined) query.set('accepting', String(params.accepting));
+    const q = query.toString();
+    const response = await this.request.get(`${API_BASE_URL}/api/public/doctors${q ? '?' + q : ''}`);
+    let body: any = null;
+    try { body = await response.json(); } catch { body = null; }
+    return { response, status: response.status(), body, ok: response.ok() };
+  }
+  async getPublicDoctor(id: number): Promise<ApiResponse> {
+    const response = await this.request.get(`${API_BASE_URL}/api/public/doctors/${id}`);
+    let body: any = null;
+    try { body = await response.json(); } catch { body = null; }
+    return { response, status: response.status(), body, ok: response.ok() };
+  }
+
+  // ── Tier 3.2: Patient self-registration (NO auth) ─────────────
+  async registerPatient(data: {
+    firstName: string; lastName: string; email: string; password: string; phone: string;
+    dateOfBirth: string; gender: string; tenantSubdomain?: string;
+  }): Promise<ApiResponse> {
+    const response = await this.request.post(`${API_BASE_URL}/api/auth/register-patient`, {
+      data,
+      headers: { 'Content-Type': 'application/json' },
+    });
+    let body: any = null;
+    try { body = await response.json(); } catch { body = null; }
+    return { response, status: response.status(), body, ok: response.ok() };
+  }
+  async verifyEmail(token: string): Promise<ApiResponse> {
+    const response = await this.request.get(`${API_BASE_URL}/api/auth/verify-email?token=${encodeURIComponent(token)}`);
+    let body: any = null;
+    try { body = await response.json(); } catch { body = null; }
+    return { response, status: response.status(), body, ok: response.ok() };
+  }
+  async resendVerification(email: string): Promise<ApiResponse> {
+    const response = await this.request.post(`${API_BASE_URL}/api/auth/resend-verification`, {
+      data: { email },
+      headers: { 'Content-Type': 'application/json' },
+    });
+    let body: any = null;
+    try { body = await response.json(); } catch { body = null; }
+    return { response, status: response.status(), body, ok: response.ok() };
+  }
+
   // ── Health (unauthenticated) ────────────────────────────────────
   async health(): Promise<{ apiOk: boolean; uiOk: boolean }> {
     // Probe API via auth endpoint (always present in dev + test).
