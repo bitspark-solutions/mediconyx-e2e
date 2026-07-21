@@ -33,6 +33,23 @@ async function getFirstDoctor(role: Role): Promise<number> {
   return r.body.doctors[0].id;
 }
 
+// Several tests need at least one ward, but the demo seed creates none.
+// Self-provision a shared ward instead of depending on leftover DB state.
+async function ensureWard(role: Role): Promise<any> {
+  const all = await api.listWards(role);
+  if (all.ok && all.body?.length) return all.body[0];
+  const created = await api.createWard('hospitalAdmin', {
+    name: 'E2E Shared Ward', code: `E2E-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, wardType: 'General', floor: 1, capacity: 10, defaultDailyRate: 1000,
+  });
+  if (!created.ok) {
+    // A parallel test may have created a ward meanwhile — re-list before giving up.
+    const again = await api.listWards(role);
+    if (again.ok && again.body?.length) return again.body[0];
+    throw new Error(`ensureWard: createWard failed: ${created.status}`);
+  }
+  return created.body;
+}
+
 test.describe('IPD — wards @ipd @api @smoke', () => {
   test('admin can list wards', async () => {
     const r = await api.listWards('hospitalAdmin');
@@ -65,8 +82,7 @@ test.describe('IPD — wards @ipd @api @smoke', () => {
   });
 
   test('creating a ward with a duplicate code fails', async () => {
-    const all = await api.listWards('hospitalAdmin');
-    const existing = all.body[0];
+    const existing = await ensureWard('hospitalAdmin');
     const dup = await api.createWard('hospitalAdmin', {
       name: 'Duplicate', code: existing.code, wardType: 'General', floor: 1, capacity: 1,
     });
@@ -103,10 +119,13 @@ test.describe('IPD — beds @ipd @api @smoke', () => {
   });
 
   test('cannot set bed to Occupied directly (only via admission)', async () => {
-    const beds = await api.listBeds('hospitalAdmin', { status: 'Available' });
-    if (beds.body.length === 0) test.skip();
-    const bed = beds.body[0];
-    const r = await api.updateBedStatus('hospitalAdmin', bed.id, { status: 'Occupied' });
+    // Create a dedicated bed so this test isn't affected by others.
+    const ward = await ensureWard('hospitalAdmin');
+    const created = await api.createBed('hospitalAdmin', {
+      wardId: ward.id, number: `E2E-OCC-${Date.now()}`, status: 'Available',
+    });
+    expect(created.status).toBe(200);
+    const r = await api.updateBedStatus('hospitalAdmin', created.body.id, { status: 'Occupied' });
     expect(r.status).toBe(400);
     expect(r.body.message).toMatch(/occupied/i);
   });
@@ -114,7 +133,15 @@ test.describe('IPD — beds @ipd @api @smoke', () => {
 
 test.describe('IPD — admission full lifecycle @ipd @api @smoke', () => {
   test('receptionist admits → doctor transfers → doctor discharges', async () => {
-    const bedId = await ensureAvailableBed('receptionist');
+    // Use a dedicated bed for this test so other tests don't pollute availability.
+    const ward = await ensureWard('receptionist');
+    const bedNum = `E2E-LC-${Date.now()}`;
+    const createBed = await api.createBed('hospitalAdmin', {
+      wardId: ward.id, number: bedNum, status: 'Available',
+    });
+    expect(createBed.status).toBe(200);
+    const bedId = createBed.body.id;
+
     const patientId = await getFirstPatient('receptionist');
     const doctorId = await getFirstDoctor('receptionist');
 
@@ -132,8 +159,12 @@ test.describe('IPD — admission full lifecycle @ipd @api @smoke', () => {
     const ourBed = bedsAfter.body.find((b: any) => b.id === bedId);
     expect(ourBed.status).toBe('Occupied');
 
-    // 2. Transfer — need another available bed
-    const otherBed = await ensureAvailableBed('receptionist');
+    // 2. Transfer — create another dedicated available bed for the destination.
+    const otherCreate = await api.createBed('hospitalAdmin', {
+      wardId: ward.id, number: `E2E-LC-DST-${Date.now()}`, status: 'Available',
+    });
+    expect(otherCreate.status).toBe(200);
+    const otherBed = otherCreate.body.id;
     const transfer = await api.transferAdmission('doctor', admissionId, {
       toBedId: otherBed, reason: 'E2E: stabilizing patient',
     });
