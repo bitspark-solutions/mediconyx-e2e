@@ -244,6 +244,67 @@ export class PortalApiClient {
     return this.authedFetch(role, 'GET', `/api/ipd/billing/charges?date=${date}`);
   }
 
+  // ── Tier 4.1: Branches ──────────────────────────────────────────
+  listBranches(role: Role, includeInactive = false): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', `/api/branch${includeInactive ? '?includeInactive=true' : ''}`);
+  }
+  getBranch(role: Role, id: number): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', `/api/branch/${id}`);
+  }
+  createBranch(role: Role, data: { name: string; code: string; address?: string; city?: string; phone?: string; email?: string; isMain?: boolean; }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/branch', data, 'application/json');
+  }
+  updateBranch(role: Role, id: number, data: any): Promise<ApiResponse> {
+    return this.authedFetch(role, 'PUT', `/api/branch/${id}`, data, 'application/json');
+  }
+  deleteBranch(role: Role, id: number): Promise<ApiResponse> {
+    return this.authedFetch(role, 'DELETE', `/api/branch/${id}`);
+  }
+
+  // ── Tier 4.2: Cabins ────────────────────────────────────────────
+  listCabinTypes(role: Role): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', '/api/ipd/cabin-types');
+  }
+  listCabins(role: Role, params?: { status?: string; cabinType?: string }): Promise<ApiResponse> {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.cabinType) query.set('cabinType', params.cabinType);
+    const q = query.toString();
+    return this.authedFetch(role, 'GET', `/api/ipd/cabins${q ? '?' + q : ''}`);
+  }
+  createCabin(role: Role, data: { wardId: number; number: string; cabinType: string; dailyRate?: number; facilities?: string[]; notes?: string; }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/ipd/beds', { ...data, kind: 'Cabin', status: 'Available' }, 'application/json');
+  }
+
+  // Raw variants for edge-case payloads that don't fit the typed helpers
+  authedPostRaw(data: any, role: Role = 'hospitalAdmin'): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/ipd/beds', data, 'application/json');
+  }
+  authedPatchRaw(bedId: number, data: any, role: Role = 'hospitalAdmin'): Promise<ApiResponse> {
+    return this.authedFetch(role, 'PATCH', `/api/ipd/beds/${bedId}/status`, data, 'application/json');
+  }
+  authedDeleteRaw(bedId: number, role: Role = 'hospitalAdmin'): Promise<ApiResponse> {
+    return this.authedFetch(role, 'DELETE', `/api/ipd/beds/${bedId}`);
+  }
+
+  // ── Tier 4.3: Employee management ───────────────────────────────
+  createUser(role: Role, data: {
+    email: string; password: string; firstName: string; lastName: string;
+    phoneNumber?: string; role: number | string; tenantId: number;
+    designation?: string; primaryDepartmentId?: number; additionalRoles?: (number | string)[];
+  }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/UserManagement', data, 'application/json');
+  }
+  updateUser(role: Role, id: number, data: any): Promise<ApiResponse> {
+    return this.authedFetch(role, 'PUT', `/api/UserManagement/${id}`, data, 'application/json');
+  }
+  attachDoctorProfile(role: Role, data: {
+    userId: number; medicalLicenseNumber?: string; specialization: string;
+    departmentId?: number; consultationDurationMinutes?: number; consultationFee?: number;
+  }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/doctor/attach-profile', data, 'application/json');
+  }
+
   // ── Tier 3.3: Telemedicine ─────────────────────────────────────
   listTelehealthSessions(role: Role): Promise<ApiResponse> {
     return this.authedFetch(role, 'GET', '/api/telemedicine/sessions');
