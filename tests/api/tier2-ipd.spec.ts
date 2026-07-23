@@ -33,20 +33,15 @@ async function getFirstDoctor(role: Role): Promise<number> {
   return r.body.doctors[0].id;
 }
 
-// Several tests need at least one ward, but the demo seed creates none.
-// Self-provision a shared ward instead of depending on leftover DB state.
+// Tests need a ward to work in. Always create a fresh one: reusing an existing
+// ward races with parallel tests that delete wards, and the demo seed has none.
+// Server caps codes at 20 chars — keep it short and unique.
 async function ensureWard(role: Role): Promise<any> {
-  const all = await api.listWards(role);
-  if (all.ok && all.body?.length) return all.body[0];
   const created = await api.createWard('hospitalAdmin', {
-    name: 'E2E Shared Ward', code: `E2E-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, wardType: 'General', floor: 1, capacity: 10, defaultDailyRate: 1000,
+    name: 'E2E Ward', code: `E2E${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
+    wardType: 'General', floor: 1, capacity: 10, defaultDailyRate: 1000,
   });
-  if (!created.ok) {
-    // A parallel test may have created a ward meanwhile — re-list before giving up.
-    const again = await api.listWards(role);
-    if (again.ok && again.body?.length) return again.body[0];
-    throw new Error(`ensureWard: createWard failed: ${created.status}`);
-  }
+  if (!created.ok) throw new Error(`ensureWard: createWard failed: ${created.status}`);
   return created.body;
 }
 
@@ -81,12 +76,27 @@ test.describe('IPD — wards @ipd @api @smoke', () => {
     expect(del.status).toBe(204);
   });
 
-  test('creating a ward with a duplicate code fails', async () => {
+  test('creating a ward with a duplicate code fails (per-branch uniqueness)', async () => {
     const existing = await ensureWard('hospitalAdmin');
+    // Same code in the SAME branch must fail…
     const dup = await api.createWard('hospitalAdmin', {
       name: 'Duplicate', code: existing.code, wardType: 'General', floor: 1, capacity: 1,
+      branchId: existing.branchId,
     });
     expect(dup.status).toBe(400);
+    // …but the same code in a DIFFERENT branch is allowed (Stage 2 multi-branch).
+    const otherBranch = await api.createBranch('hospitalAdmin', {
+      name: `E2E Dup Branch ${Date.now()}`, code: `DU${Date.now().toString(36)}x`,
+    });
+    expect(otherBranch.ok).toBe(true);
+    const allowed = await api.createWard('hospitalAdmin', {
+      name: 'Allowed Copy', code: existing.code, wardType: 'General', floor: 1, capacity: 1,
+      branchId: otherBranch.body.id,
+    });
+    expect(allowed.status).toBe(201);
+    // Cleanup
+    await api.deleteWard('hospitalAdmin', allowed.body.id);
+    await api.deleteBranch('hospitalAdmin', otherBranch.body.id);
   });
 });
 
