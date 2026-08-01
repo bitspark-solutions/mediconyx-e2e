@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { ContactSalesPage } from '../pages/contact-sales.page';
 import { ApiClient } from '../helpers/api-client';
 import { faker } from '@faker-js/faker';
+import { sanitize } from '../helpers/data-factory';
 
 test.describe('Contact Sales Full E2E Flow @e2e @smoke', () => {
   test('complete flow: fill form → submit → verify in database via API', async ({ page, request }) => {
@@ -9,7 +10,7 @@ test.describe('Contact Sales Full E2E Flow @e2e @smoke', () => {
     const api = new ApiClient(request);
 
     // Generate unique test data
-    const hospitalName = `${faker.company.name()} E2E Hospital`;
+    const hospitalName = `${sanitize(faker.company.name())} E2E Hospital`;
     const contactPerson = faker.person.fullName();
     const email = faker.internet.email().toLowerCase();
     const phone = faker.phone.number({ style: 'international' });
@@ -77,7 +78,7 @@ test.describe('Contact Sales Full E2E Flow @e2e @smoke', () => {
 
     // Fill and submit with unique data
     const contactSales = new ContactSalesPage(page);
-    const hospitalName = `${faker.company.name()} Landing-E2E`;
+    const hospitalName = `${sanitize(faker.company.name())} Landing-E2E`;
     const email = faker.internet.email().toLowerCase();
 
     await contactSales.hospitalNameInput.fill(hospitalName);
@@ -106,7 +107,6 @@ test.describe('Contact Sales Full E2E Flow @e2e @smoke', () => {
     const api = new ApiClient(request);
 
     // Strip chars the API HTML-encodes (matches data-factory behavior)
-    const sanitize = (v: string) => v.replace(/['"&<>]/g, '');
 
     await contactSales.goto();
 

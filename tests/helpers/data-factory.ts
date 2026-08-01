@@ -1,7 +1,7 @@
 import { faker } from '@faker-js/faker';
 
 // Strip characters that the API HTML-encodes (e.g. ' → &#39;)
-function sanitize(value: string): string {
+export function sanitize(value: string): string {
   return value.replace(/['"&<>]/g, '');
 }
 

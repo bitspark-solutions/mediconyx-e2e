@@ -24,7 +24,7 @@ export default defineConfig({
     {
       name: 'ui',
       testDir: './tests/ui',
-      use: { browserName: 'chromium', baseURL: BASE_URL },
+      use: { browserName: 'chromium', baseURL: BASE_URL, video: 'on' },
     },
     {
       name: 'api',
@@ -34,7 +34,7 @@ export default defineConfig({
     {
       name: 'e2e',
       testDir: './tests/e2e',
-      use: { browserName: 'chromium', baseURL: BASE_URL },
+      use: { browserName: 'chromium', baseURL: BASE_URL, video: 'on' },
     },
   ],
 });

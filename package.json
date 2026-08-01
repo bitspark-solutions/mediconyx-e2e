@@ -15,6 +15,8 @@
     "test:headed": "npx playwright test --headed",
     "test:ui-mode": "npx playwright test --ui",
     "test:debug": "npx playwright test --debug",
+    "test:onboarding": "cross-env TEST_ENV=test npx playwright test tests/e2e/onboarding-story.spec.ts && node scripts/collect-videos.mjs onboarding-story",
+    "test:env:video": "npm run test:env && node scripts/collect-videos.mjs",
     "report": "npx playwright show-report"
   },
   "keywords": [],
