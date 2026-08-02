@@ -24,7 +24,9 @@ export default defineConfig({
     {
       name: 'ui',
       testDir: './tests/ui',
-      use: { browserName: 'chromium', baseURL: BASE_URL, video: 'on' },
+      // Micro-tests (is X visible?) finish in ~1s and make boring clips —
+      // keep video only when one fails, as debugging evidence.
+      use: { browserName: 'chromium', baseURL: BASE_URL, video: 'retain-on-failure' },
     },
     {
       name: 'api',
@@ -34,7 +36,14 @@ export default defineConfig({
     {
       name: 'e2e',
       testDir: './tests/e2e',
-      use: { browserName: 'chromium', baseURL: BASE_URL, video: 'on' },
+      // Full user flows (portal walkthroughs, onboarding story) — always record.
+      // SLOW_MO=<ms> slows every action for live demos (npm run test:onboarding:slow).
+      use: {
+        browserName: 'chromium',
+        baseURL: BASE_URL,
+        video: 'on',
+        launchOptions: { slowMo: Number(process.env.SLOW_MO || 0) },
+      },
     },
   ],
 });

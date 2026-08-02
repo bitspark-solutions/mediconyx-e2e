@@ -16,6 +16,8 @@
     "test:ui-mode": "npx playwright test --ui",
     "test:debug": "npx playwright test --debug",
     "test:onboarding": "cross-env TEST_ENV=test npx playwright test tests/e2e/onboarding-story.spec.ts && node scripts/collect-videos.mjs onboarding-story",
+    "test:onboarding:headed": "cross-env TEST_ENV=test npx playwright test tests/e2e/onboarding-story.spec.ts --headed --workers=1 && node scripts/collect-videos.mjs onboarding-story-headed",
+    "test:onboarding:slow": "cross-env TEST_ENV=test SLOW_MO=800 npx playwright test tests/e2e/onboarding-story.spec.ts --headed --workers=1 && node scripts/collect-videos.mjs onboarding-story-slow",
     "test:env:video": "npm run test:env && node scripts/collect-videos.mjs",
     "report": "npx playwright show-report"
   },
