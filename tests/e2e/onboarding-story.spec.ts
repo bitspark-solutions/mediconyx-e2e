@@ -15,7 +15,7 @@ import { ContactSalesPage } from '../pages/contact-sales.page';
 
 const API = process.env.API_BASE_URL || 'http://localhost:9765';
 const MAILHOG = process.env.MAILHOG_URL
-  || (process.env.TEST_ENV === 'test' ? 'http://localhost:8026' : 'http://localhost:8025');
+  || (process.env.TEST_ENV === 'test' ? 'http://localhost:8126' : 'http://localhost:8025');
 const MASTER_PASSWORD = process.env.TEST_MASTER_PASSWORD || 'MasterPass123!';
 
 const STAMP = Date.now().toString(36);
