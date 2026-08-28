@@ -17,6 +17,8 @@ import path from 'path';
  *   TEST_ENV=test SLOW_MO=2000 npx playwright test tests/e2e/onboarding-story-ui.spec.ts --headed --workers=1
  */
 
+const BASE_URL = process.env.BASE_URL
+  || (process.env.TEST_ENV === 'test' ? 'http://localhost:9674' : 'http://localhost:9673');
 const API = process.env.API_BASE_URL || 'http://localhost:9765';
 const MAILHOG = process.env.MAILHOG_URL
   || (process.env.TEST_ENV === 'test' ? 'http://localhost:8126' : 'http://localhost:8025');
@@ -43,7 +45,13 @@ function fieldAfter(page: Page, label: string, tag = 'input'): Locator {
 }
 
 async function uiLogin(page: Page, email: string, password: string) {
-  await page.goto('/login');
+  await page.context().clearCookies();
+  await page.goto(`${BASE_URL}/login`);
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await page.goto(`${BASE_URL}/login`);
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole('button', { name: /sign in|log in/i }).click();
@@ -150,8 +158,10 @@ test.describe('Full onboarding story — fully visible UI @e2e @onboarding @vide
     await page.waitForTimeout(800);
     const fileInput = page.locator('input[type="file"]');
     for (const fixture of FIXTURES) {
+      const filename = path.basename(fixture);
       await fileInput.setInputFiles(fixture);
-      await page.waitForTimeout(1500); // upload + reload
+      await expect(page.getByText(filename)).toBeVisible({ timeout: 15_000 });
+      await page.waitForTimeout(500);
     }
     await expect(page.getByText('license.pdf')).toBeVisible();
     await expect(page.getByText('tax-certificate.pdf')).toBeVisible();
