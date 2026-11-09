@@ -42,7 +42,7 @@ async function provisionDoctor() {
   const sched = await api.createDoctorSchedule('hospitalAdmin', {
     doctorId: doctorUserId,
     departmentId,
-    dayOfWeek: new Date().getDay(), // JS getDay() matches .NET DayOfWeek numbering
+    dayOfWeek: new Date().getUTCDay(), // UTC day of week — matches the UTC dateStr used for slot queries
     startTime: '09:00',
     endTime: '17:00',
     slotDurationMinutes: 30,

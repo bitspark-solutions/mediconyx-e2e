@@ -35,7 +35,7 @@ test.describe('New Consultation workflow (browser) @e2e @consultation @reception
 
     const sched = await api.createDoctorSchedule('hospitalAdmin', {
       doctorId: doctorUserId, departmentId,
-      dayOfWeek: new Date().getDay(), startTime: '09:00', endTime: '17:00', slotDurationMinutes: 60,
+      dayOfWeek: new Date().getUTCDay(), startTime: '09:00', endTime: '17:00', slotDurationMinutes: 60,
     });
     expect(sched.ok).toBe(true);
 
@@ -48,6 +48,7 @@ test.describe('New Consultation workflow (browser) @e2e @consultation @reception
     // Open the New Consultation tab (sidebar nav or primary action — same destination)
     await page.getByRole('button', { name: /New Consultation/i }).first().click();
     await expect(page.getByRole('heading', { level: 1, name: /New Patient Consultation/i })).toBeVisible();
+    await page.waitForSelector('#nc-full-name', { state: 'visible' });
 
     // Step 2: register the walk-in patient
     await page.locator('#nc-full-name').fill(`${patientFirst} ${patientLast}`);
