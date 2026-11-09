@@ -70,11 +70,11 @@ export class PortalApiClient {
   }
 
   // ── Patients ─────────────────────────────────────────────────────
-  listPatients(role: Role, params?: { page?: number; pageSize?: number; q?: string }): Promise<ApiResponse> {
+  listPatients(role: Role, params?: { page?: number; pageSize?: number; searchTerm?: string }): Promise<ApiResponse> {
     const query = new URLSearchParams();
     if (params?.page) query.set('page', String(params.page));
     if (params?.pageSize) query.set('pageSize', String(params.pageSize || 50));
-    if (params?.q) query.set('q', params.q);
+    if (params?.searchTerm) query.set('searchTerm', params.searchTerm);
     const q = query.toString();
     return this.authedFetch(role, 'GET', `/api/patient${q ? '?' + q : ''}`);
   }
@@ -95,22 +95,33 @@ export class PortalApiClient {
   }
 
   // ── Appointments ────────────────────────────────────────────────
-  listAppointments(role: Role, params?: { pageSize?: number }): Promise<ApiResponse> {
+  listAppointments(role: Role, params?: { pageSize?: number; dateFrom?: string; dateTo?: string; doctorId?: number; patientId?: number }): Promise<ApiResponse> {
     const query = new URLSearchParams();
     if (params?.pageSize) query.set('pageSize', String(params.pageSize || 50));
+    if (params?.dateFrom) query.set('dateFrom', params.dateFrom);
+    if (params?.dateTo) query.set('dateTo', params.dateTo);
+    if (params?.doctorId) query.set('doctorId', String(params.doctorId));
+    if (params?.patientId) query.set('patientId', String(params.patientId));
     const q = query.toString();
     return this.authedFetch(role, 'GET', `/api/appointment${q ? '?' + q : ''}`);
   }
 
+  // Matches CreateAppointmentRequest: doctorId is a User id, departmentId required,
+  // times are "HH:mm" strings, type accepts string enum.
   createAppointment(role: Role, data: {
-    patientId: number; doctorId: number; serviceId?: number;
-    appointmentDate: string; durationMinutes: number; type: string; notes?: string;
+    patientId: number; doctorId: number; departmentId: number; branchId?: number;
+    appointmentDate: string; startTime: string; endTime: string;
+    type: string; reason?: string; notes?: string;
   }): Promise<ApiResponse> {
     return this.authedFetch(role, 'POST', '/api/appointment', data);
   }
 
+  listAppointmentSlots(role: Role, doctorId: number, date: string): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', `/api/appointment/slots?doctorId=${doctorId}&date=${date}`);
+  }
+
   cancelAppointment(role: Role, id: number, reason: string): Promise<ApiResponse> {
-    return this.authedFetch(role, 'PATCH', `/api/appointment/${id}/cancel`, { reason });
+    return this.authedFetch(role, 'POST', `/api/appointment/${id}/cancel`, { reason });
   }
 
   // ── Vitals ──────────────────────────────────────────────────────
@@ -139,14 +150,41 @@ export class PortalApiClient {
     return this.authedFetch(role, 'PUT', '/api/TenantSettings', data);
   }
 
-  // ── Doctors ─────────────────────────────────────────────────────
-  listDoctors(role: Role): Promise<ApiResponse> {
-    return this.authedFetch(role, 'GET', '/api/doctor?pageSize=100');
+  // Master-only: PUT /api/TenantSettings/subscription/{tenantId} — plan, seats, validity.
+  updateTenantSubscription(role: Role, tenantId: number, data: {
+    subscriptionPlan?: string; userLicenses?: number;
+    subscriptionStartDate?: string; subscriptionExpiresAt?: string;
+  }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'PUT', `/api/TenantSettings/subscription/${tenantId}`, data);
   }
 
   // ── Departments ─────────────────────────────────────────────────
   listDepartments(role: Role): Promise<ApiResponse> {
     return this.authedFetch(role, 'GET', '/api/department?pageSize=100');
+  }
+
+  createDepartment(role: Role, data: { name: string; code: string; description?: string }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/department', data);
+  }
+
+  // ── Doctors ─────────────────────────────────────────────────────
+  listDoctors(role: Role): Promise<ApiResponse> {
+    return this.authedFetch(role, 'GET', '/api/doctor?pageSize=100');
+  }
+
+  createDoctor(role: Role, data: {
+    firstName: string; lastName: string; email: string; password: string;
+    specialization: string; departmentId?: number; medicalLicenseNumber?: string;
+    consultationDurationMinutes?: number; consultationFee?: number; phone?: string;
+  }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/doctor', data);
+  }
+
+  createDoctorSchedule(role: Role, data: {
+    doctorId: number; departmentId: number; dayOfWeek: number;
+    startTime: string; endTime: string; slotDurationMinutes?: number;
+  }): Promise<ApiResponse> {
+    return this.authedFetch(role, 'POST', '/api/doctor-schedule', data);
   }
 
   // ── Services ────────────────────────────────────────────────────
@@ -191,7 +229,7 @@ export class PortalApiClient {
   listWards(role: Role): Promise<ApiResponse> {
     return this.authedFetch(role, 'GET', '/api/ipd/wards');
   }
-  createWard(role: Role, data: { name: string; code: string; wardType: string; floor?: number; capacity?: number; defaultDailyRate?: number; location?: string; }): Promise<ApiResponse> {
+  createWard(role: Role, data: { name: string; code: string; wardType: string; branchId?: number; floor?: number; capacity?: number; defaultDailyRate?: number; location?: string; }): Promise<ApiResponse> {
     return this.authedFetch(role, 'POST', '/api/ipd/wards', data, 'application/json');
   }
   updateWard(role: Role, id: number, data: any): Promise<ApiResponse> {

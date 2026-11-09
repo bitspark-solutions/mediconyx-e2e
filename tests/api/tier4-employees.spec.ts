@@ -5,6 +5,12 @@ let api: PortalApiClient;
 
 test.beforeEach(async ({ request }) => {
   api = new PortalApiClient(request);
+  // The demo tenant seeds 50 seats; accumulated E2E runs push the active-user
+  // count past that, and createUser then fails with "User license limit
+  // reached". Raise the seat ceiling (master-only endpoint) so employee
+  // provisioning self-provisions regardless of how many runs preceded it.
+  const raised = await api.updateTenantSubscription('master', CITY_GENERAL_TENANT, { userLicenses: 1000 });
+  expect(raised.ok).toBe(true);
 });
 
 const CITY_GENERAL_TENANT = 2;
@@ -222,6 +228,7 @@ test.describe('Employees — attach doctor profile (director-who-practices) @tie
       email: uniqEmail('xdeptattach'), password: 'X@123456', firstName: 'X', lastName: 'Dept',
       role: 'Nurse', tenantId: CITY_GENERAL_TENANT,
     });
+    expect(created.ok).toBe(true);
     const r = await api.attachDoctorProfile('hospitalAdmin', {
       userId: created.body.id, specialization: 'General', departmentId: 999999,
     });

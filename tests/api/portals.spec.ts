@@ -157,7 +157,7 @@ test.describe('Portal write flows @api @write', () => {
       firstName: 'TestFirst',
       lastName: `Patient${unique}`,
       dateOfBirth: '1990-01-01T00:00:00Z', // UTC ISO 8601
-      gender: 0, // Gender enum: Male=0, Female=1, Other=2
+      gender: 'Male', // string enum form — accepted by JsonStringEnumConverter
       phone: `+880-1800-${unique.slice(-7)}`,
       email: `test${unique}@patient.local`,
       bloodGroup: 'O+',
