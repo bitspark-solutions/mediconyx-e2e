@@ -48,7 +48,9 @@ test.describe('New Consultation workflow (browser) @e2e @consultation @reception
     // Open the New Consultation tab (sidebar nav or primary action — same destination)
     await page.getByRole('button', { name: /New Consultation/i }).first().click();
     await expect(page.getByRole('heading', { level: 1, name: /New Patient Consultation/i })).toBeVisible();
-    await page.waitForSelector('#nc-full-name', { state: 'visible' });
+    // The registration form (incl. #nc-full-name) renders in the same mount as the heading once
+    // no patient is selected. Wait for it explicitly so the walk-in registration fields are ready.
+    await expect(page.locator('#nc-full-name')).toBeVisible();
 
     // Step 2: register the walk-in patient
     await page.locator('#nc-full-name').fill(`${patientFirst} ${patientLast}`);
