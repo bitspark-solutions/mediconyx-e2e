@@ -114,9 +114,9 @@ test.describe('IPD — beds @ipd @api @smoke', () => {
   });
 
   test('admin can add a bed and set its status', async () => {
-    const wards = await api.listWards('hospitalAdmin');
-    if (wards.body.length === 0) test.skip();
-    const ward = wards.body[0];
+    // Own ward: parallel ward tests delete theirs, so wards[0] can vanish
+    // between the list and the bed insert (FK violation on Beds.WardId).
+    const ward = await ensureWard('hospitalAdmin');
     const num = `T2-B-${Date.now()}`;
     const created = await api.createBed('hospitalAdmin', { wardId: ward.id, number: num, dailyRate: 7500 });
     expect(created.status).toBe(200);

@@ -21,7 +21,7 @@ const BASE_URL = process.env.BASE_URL
   || (process.env.TEST_ENV === 'test' ? 'http://localhost:9674' : 'http://localhost:9673');
 const API = process.env.API_BASE_URL || 'http://localhost:9765';
 const MAILHOG = process.env.MAILHOG_URL
-  || (process.env.TEST_ENV === 'test' ? 'http://localhost:8126' : 'http://localhost:8025');
+  || (process.env.TEST_ENV === 'test' ? 'http://localhost:9126' : 'http://localhost:9125');
 
 const STAMP = Date.now().toString(36);
 const HOSPITAL = {
